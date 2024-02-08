@@ -71,9 +71,8 @@ function ensureAuthenticated(req, res, next) {
 // Socket.io logic
 const rooms = {};
 
+// Server-side
 io.on('connection', (socket) => {
-  // Handle user authentication, room creation, joining, etc.
-
   socket.on('joinRoom', (roomCode, username) => {
     socket.join(roomCode);
     socket.username = username;
@@ -86,17 +85,16 @@ io.on('connection', (socket) => {
     socket.emit('updateParticipants', participants);
   });
 
-  socket.on('sendMessage', (message) => {
-    // Broadcast the message to all participants in the room
-    const roomCode = Object.keys(socket.rooms)[1];
-    io.to(roomCode).emit('sendMessage', socket.username, message);
+  socket.on('sendMessage', (username, message) => {
+    const roomCode = Object.keys(socket.rooms).filter(item => item!=socket.id)[0];
+    console.log(message);
+    io.to(roomCode).emit('receiveMessage', username, message);
   });
 
-  // Handle code editing and live updates
   socket.on('codeUpdate', (code) => {
-    // Broadcast the updated code to all participants in the room
-    const roomCode = Object.keys(socket.rooms)[1];
-    io.to(roomCode).emit('updateCode', code);
+    setCode(newCode);
+    const roomCode = Object.keys(socket.rooms).filter(item => item!=socket.id)[0];
+    socket.to(roomCode).emit('updateCode', code);
   });
 
   socket.on('disconnect', () => {
@@ -119,7 +117,7 @@ function getParticipants(roomCode) {
 }
 
 // Routes for the authentication system
-app.get('/login', function (req, res) {
+app.get('/', function (req, res) {
   res.render('login');
 });
 
@@ -127,11 +125,11 @@ app.get('/signup', function (req, res) {
   res.render('signup');
 });
 
-app.get('/secrets', ensureAuthenticated, function (req, res) {
+app.get('/editor', ensureAuthenticated, function (req, res) {
   User.find({ 'secret': { $ne: null } })
     .then(foundUsers => {
       if (foundUsers) {
-        res.render('secrets', { usersWithSecrets: foundUsers });
+        res.render('editor', { usersWitheditor: foundUsers });
       }
     })
     .catch(err => {
@@ -156,18 +154,18 @@ app.post('/signup', function (req, res) {
       return res.redirect('/signup');
     }
     passport.authenticate('local')(req, res, function () {
-      res.redirect('/secrets');
+      res.redirect('/editor');
     });
   });
 });
 
 // Use passport.authenticate as middleware for login route
 app.post('/login', passport.authenticate('local', {
-  successRedirect: '/secrets',
+  successRedirect: '/editor',
   failureRedirect: '/login'
 }));
 
-const port = process.env.PORT || 3001; // Use dynamic port
+const port = process.env.PORT || 3000; // Use dynamic port
 server.listen(port, function () {
   console.log(`Server started on port ${port}.`);
 });
