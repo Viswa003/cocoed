@@ -72,31 +72,41 @@ function ensureAuthenticated(req, res, next) {
 const rooms = {};
 
 // Server-side
+
 io.on('connection', (socket) => {
   socket.on('joinRoom', (roomCode, username) => {
     socket.join(roomCode);
     socket.username = username;
 
     // Broadcast to all participants in the room that a new user has joined
-    io.to(roomCode).emit('userJoined', username);
+    socket.to(roomCode).emit('userJoined', username);
 
     // Send the current list of participants to the new user
     const participants = getParticipants(roomCode);
     socket.emit('updateParticipants', participants);
   });
 
-  socket.on('sendMessage', (username, message) => {
-    const roomCode = Object.keys(socket.rooms).filter(item => item!=socket.id)[0];
-    console.log(message);
-    io.to(roomCode).emit('receiveMessage', username, message);
+  socket.on('sendMessage', (roomCode, username, message) => {
+    // const roomCode = Object.keys(socket.rooms).filter(item => item!=socket.id)[0];
+    // io.to(roomCode).emit('receiveMessage', username, message);
+    socket.to(roomCode).emit('receiveMessage', username, message);
   });
 
-  socket.on('codeUpdate', (code) => {
-    setCode(newCode);
-    const roomCode = Object.keys(socket.rooms).filter(item => item!=socket.id)[0];
+
+
+
+
+
+  socket.on('codeUpdateOut', (roomCode, code) => {
     socket.to(roomCode).emit('updateCode', code);
   });
 
+
+  
+
+
+
+  
   socket.on('disconnect', () => {
     // Handle user disconnect, update participants and notify others
   });
@@ -116,8 +126,13 @@ function getParticipants(roomCode) {
   return participants;
 }
 
+
 // Routes for the authentication system
 app.get('/', function (req, res) {
+  res.render('login');
+});
+
+app.get('/login', function (req, res) {
   res.render('login');
 });
 
